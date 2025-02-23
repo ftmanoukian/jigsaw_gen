@@ -74,6 +74,7 @@ err_max_h = 0.125 # como porcentaje del ancho de una celda
 err_max_v = 0.125 # como porcentaje del alto de una celda
 
 coupling_width = 0.28 # como porcentaje del largo de un lado
+coupling_slope_disp_factor = 0.0075 # recomiendo no tocar jeje... valores mayores a 0.01 exageran el desplazamiento
 
 # ==== A PARTIR DE ACA NO TOCAR
 
@@ -88,6 +89,9 @@ deltas_v = np.linspace(-row_height*err_max_v, row_height*err_max_v, (ncols - 1) 
 random.shuffle(deltas_h)
 random.shuffle(deltas_v)
 
+max_h_slope = (row_height * (1 + 2 * err_max_v)) / (col_width * (1 - 2 * err_max_h))
+max_v_slope = (col_width * (1 + 2 * err_max_h)) / (row_height * (1 - 2 * err_max_v))
+
 vert_matrix = []
 for ncol in range(ncols + 1):
     col = []
@@ -98,7 +102,6 @@ for ncol in range(ncols + 1):
             x += deltas_h.pop(0)
             y += deltas_v.pop(0)
         col.append(np.array([x,y]))
-        
     vert_matrix.append(col)
 
 # ==== angulos tangentes de bordes en vertices ====
@@ -126,39 +129,15 @@ for ncol in range(ncols + 1):
         col.append([alpha_h, alpha_v])
     tg_matrix.append(col)
 
+coupling_matrix = [[random.randint(0,1) for nrow in range(nrows)] for ncol in range(ncols)]
+
 dwg = svgwrite.Drawing(
     filename = f"PUZZLE.svg",
     size = (width, height),
     profile = "tiny"
 )
 
-for ncol in range(1,ncols,1):
-    vpath = dwg.path().stroke('black',width=0.5).fill('none')
-
-    for nrow in range(nrows):
-        E0 = vert_matrix[ncol][nrow]
-        E1 = vert_matrix[ncol][nrow + 1]
-        a0 = tg_matrix[ncol][nrow][1]
-        a1 = tg_matrix[ncol][nrow+1][1] + np.pi
-        I0, I1 = get_center_handles(E0,E1,a0,a1)
-
-        P0 = bezier_point(t_begin, E0,I0,I1,E1)
-        P1 = bezier_point(t_end, E0,I0,I1,E1)
-        b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
-        b1 = bezier_tangent(t_end,E0,I0,I1,E1) + np.pi
-
-        E0_1,I0_1,I1_1,E1_1 = split_cubic_bezier(E0,I0,I1,E1,t_begin)
-        E1_2,I1_2,I0_2,E0_2 = split_cubic_bezier(E1,I1,I0,E0,1-t_end)
-
-        vpath.push(
-            f'M{E0_1[0]},{E0_1[1]} C{I0_1[0]} {I0_1[1]},{I1_1[0]} {I1_1[1]},{E1_1[0]} {E1_1[1]}'
-        )
-        vpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
-        vpath.push(
-            f'M{E1_2[0]},{E1_2[1]} C{I1_2[0]} {I1_2[1]},{I0_2[0]} {I0_2[1]},{E0_2[0]} {E0_2[1]}'
-        )
-    
-    dwg.add(vpath)
+# lineas horizontales
 
 for nrow in range(1,nrows,1):
     hpath = dwg.path().stroke('black',width=0.5).fill('none')
@@ -170,23 +149,67 @@ for nrow in range(1,nrows,1):
         a1 = tg_matrix[ncol + 1][nrow][0] + np.pi
         I0, I1 = get_center_handles(E0,E1,a0,a1)
 
-        P0 = bezier_point(t_begin, E0,I0,I1,E1)
-        P1 = bezier_point(t_end, E0,I0,I1,E1)
-        b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
-        b1 = bezier_tangent(t_end,E0,I0,I1,E1) + np.pi
+        # desplazamiento de acople según la pendiente promedio de la arista
+        avg_edge_slope = (-(E1-E0)[1])/((E1-E0)[0]) # el primero resta porque y apunta hacia abajo
+        t_disp = (avg_edge_slope/max_h_slope)*coupling_slope_disp_factor
+        t_disp = np.cbrt(t_disp)*(1-coupling_width/2)
+        t0 = t_begin + t_disp * (coupling_matrix[ncol][nrow] * 2 - 1)
+        t1 = t_end + t_disp * (coupling_matrix[ncol][nrow] * 2 - 1)
 
-        E0_1,I0_1,I1_1,E1_1 = split_cubic_bezier(E0,I0,I1,E1,t_begin)
-        E1_2,I1_2,I0_2,E0_2 = split_cubic_bezier(E1,I1,I0,E0,1-t_end)
+        P0 = bezier_point(t0, E0,I0,I1,E1)
+        P1 = bezier_point(t1, E0,I0,I1,E1)
+        b0 = bezier_tangent(t0,E0,I0,I1,E1)
+        b1 = bezier_tangent(t1,E0,I0,I1,E1) + np.pi
+
+        E0_1,I0_1,I1_1,E1_1 = split_cubic_bezier(E0,I0,I1,E1,t0)
+        E1_2,I1_2,I0_2,E0_2 = split_cubic_bezier(E1,I1,I0,E0,1-t1)
 
         hpath.push(
             f'M{E0_1[0]},{E0_1[1]} C{I0_1[0]} {I0_1[1]},{I1_1[0]} {I1_1[1]},{E1_1[0]} {E1_1[1]}'
         )
-        hpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
+        hpath.push(create_coupling(P0,P1,b0,b1,coupling_matrix[ncol][nrow]))
         hpath.push(
             f'M{E1_2[0]},{E1_2[1]} C{I1_2[0]} {I1_2[1]},{I0_2[0]} {I0_2[1]},{E0_2[0]} {E0_2[1]}'
         )
     
     dwg.add(hpath)
+
+# lineas verticales
+
+for ncol in range(1,ncols,1):
+    vpath = dwg.path().stroke('black',width=0.5).fill('none')
+
+    for nrow in range(nrows):
+        E0 = vert_matrix[ncol][nrow]
+        E1 = vert_matrix[ncol][nrow + 1]
+        a0 = tg_matrix[ncol][nrow][1]
+        a1 = tg_matrix[ncol][nrow + 1][1] + np.pi
+        I0, I1 = get_center_handles(E0,E1,a0,a1)
+
+        # desplazamiento de acople según la pendiente promedio de la arista
+        avg_edge_slope = ((E1-E0)[0])/((E1-E0)[1]) # el primero resta porque y apunta hacia abajo
+        t_disp = (avg_edge_slope/max_h_slope)*coupling_slope_disp_factor
+        t_disp = np.cbrt(t_disp)*(1-coupling_width/2)
+        t0 = t_begin + t_disp * (coupling_matrix[ncol][nrow] * 2 - 1)
+        t1 = t_end + t_disp * (coupling_matrix[ncol][nrow] * 2 - 1)
+
+        P0 = bezier_point(t0, E0,I0,I1,E1)
+        P1 = bezier_point(t1, E0,I0,I1,E1)
+        b0 = bezier_tangent(t0,E0,I0,I1,E1)
+        b1 = bezier_tangent(t1,E0,I0,I1,E1) + np.pi
+
+        E0_1,I0_1,I1_1,E1_1 = split_cubic_bezier(E0,I0,I1,E1,t0)
+        E1_2,I1_2,I0_2,E0_2 = split_cubic_bezier(E1,I1,I0,E0,1-t1)
+
+        vpath.push(
+            f'M{E0_1[0]},{E0_1[1]} C{I0_1[0]} {I0_1[1]},{I1_1[0]} {I1_1[1]},{E1_1[0]} {E1_1[1]}'
+        )
+        vpath.push(create_coupling(P0,P1,b0,b1,coupling_matrix[ncol][nrow]))
+        vpath.push(
+            f'M{E1_2[0]},{E1_2[1]} C{I1_2[0]} {I1_2[1]},{I0_2[0]} {I0_2[1]},{E0_2[0]} {E0_2[1]}'
+        )
+    
+    dwg.add(vpath)
     
 border = dwg.path().stroke('black',width=0.5).fill('none')
 border.push(f'M0,0 H{width} V{height}')
