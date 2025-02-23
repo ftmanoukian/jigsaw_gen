@@ -48,6 +48,21 @@ def create_coupling(P0:np.array,P1:np.array,alpha0:float,alpha1:float,direction:
 
     return path
 
+def lerp(P0:np.array,P1:np.array,t:float)->np.array:
+    return (1-t)*P0+t*P1
+
+def split_cubic_bezier(P0:np.array,P1:np.array,P2:np.array,P3:np.array,t_end:float)->list[:np.array]:
+    P0_1 = lerp(P0,P1,t_end)
+    P1_1 = lerp(P1,P2,t_end)
+    P2_1 = lerp(P2,P3,t_end)
+
+    P0_2 = lerp(P0_1,P1_1,t_end)
+    P1_2 = lerp(P1_1,P2_1,t_end)
+
+    P0_3 = lerp(P0_2,P1_2,t_end)
+
+    return [P0,P0_1,P0_2,P0_3]
+
 # ==== PARAMETROS DE ROMPECABEZAS - se pueden modificar ====
 
 ncols = 20
@@ -117,107 +132,61 @@ dwg = svgwrite.Drawing(
     profile = "tiny"
 )
 
-for ncol in range(1, ncols, 1):
+for ncol in range(1,ncols,1):
     vpath = dwg.path().stroke('black',width=0.5).fill('none')
 
-    # bezier vertice a vertice
-    E0 = vert_matrix[ncol][0]
-    E1 = vert_matrix[ncol][1]
-    a0 = tg_matrix[ncol][0][1]
-    a1 = tg_matrix[ncol][1][1] + np.pi
-    I0, I1 = get_center_handles(E0,E1,a0,a1)
-
-    # acople
-    P0 = bezier_point(t_begin, E0,I0,I1,E1)
-    P1 = bezier_point(t_end, E0,I0,I1,E1)
-    b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
-    b1 = bezier_tangent(t_end,E0,I0,I1,E1) + np.pi
-
-    # bezier vertice sup - acople
-    I2,I3 = get_center_handles(E0,P0,a0,b0+np.pi)
-    vpath.push(f'M{E0[0]},{E0[1]} C{I2[0]} {I2[1]}, {I3[0]} {I3[1]}, {P0[0]} {P0[1]}')
-
-    vpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
-
-    for nrow in range(1,nrows,1):
-        # bezier vertice a vertice
+    for nrow in range(nrows):
         E0 = vert_matrix[ncol][nrow]
         E1 = vert_matrix[ncol][nrow + 1]
         a0 = tg_matrix[ncol][nrow][1]
         a1 = tg_matrix[ncol][nrow+1][1] + np.pi
         I0, I1 = get_center_handles(E0,E1,a0,a1)
 
-        # calculo el primer punto para no perder el segundo punto del ciclo anterior
         P0 = bezier_point(t_begin, E0,I0,I1,E1)
-        b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
-
-        # bezier de acople a acople
-        I2,I3 = get_center_handles(P1,P0,b1+np.pi,b0+np.pi)
-        vpath.push(f'M{P1[0]},{P1[1]} C{I2[0]} {I2[1]}, {I3[0]} {I3[1]}, {P0[0]} {P0[1]}')
-
-        # calculo segundo punto para ubicar acople
         P1 = bezier_point(t_end, E0,I0,I1,E1)
+        b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
         b1 = bezier_tangent(t_end,E0,I0,I1,E1) + np.pi
 
-        vpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
+        E0_1,I0_1,I1_1,E1_1 = split_cubic_bezier(E0,I0,I1,E1,t_begin)
+        E1_2,I1_2,I0_2,E0_2 = split_cubic_bezier(E1,I1,I0,E0,1-t_end)
 
-    # bezier acople - vertice inf
-    P0 = vert_matrix[ncol][nrows]
-    I2,I3 = get_center_handles(P1,P0,a0,0)
-    vpath.push(f'M{P1[0]},{P1[1]} C{I2[0]} {I2[1]}, {I3[0]} {I3[1]}, {P0[0]} {P0[1]}')
-        
+        vpath.push(
+            f'M{E0_1[0]},{E0_1[1]} C{I0_1[0]} {I0_1[1]},{I1_1[0]} {I1_1[1]},{E1_1[0]} {E1_1[1]}'
+        )
+        vpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
+        vpath.push(
+            f'M{E1_2[0]},{E1_2[1]} C{I1_2[0]} {I1_2[1]},{I0_2[0]} {I0_2[1]},{E0_2[0]} {E0_2[1]}'
+        )
+    
     dwg.add(vpath)
 
-for nrow in range(1, nrows, 1):
-    vpath = dwg.path().stroke('black',width=0.5).fill('none')
+for nrow in range(1,nrows,1):
+    hpath = dwg.path().stroke('black',width=0.5).fill('none')
 
-    # bezier vertice a vertice
-    E0 = vert_matrix[0][nrow]
-    E1 = vert_matrix[1][nrow]
-    a0 = tg_matrix[0][nrow][0]
-    a1 = tg_matrix[1][nrow][0] + np.pi
-    I0, I1 = get_center_handles(E0,E1,a0,a1)
-
-    # acople
-    P0 = bezier_point(t_begin, E0,I0,I1,E1)
-    P1 = bezier_point(t_end, E0,I0,I1,E1)
-    b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
-    b1 = bezier_tangent(t_end,E0,I0,I1,E1) + np.pi
-
-    # bezier vertice sup - acople
-    I2,I3 = get_center_handles(E0,P0,a0,b0+np.pi)
-    vpath.push(f'M{E0[0]},{E0[1]} C{I2[0]} {I2[1]}, {I3[0]} {I3[1]}, {P0[0]} {P0[1]}')
-
-    vpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
-
-    for ncol in range(1,ncols,1):
-        # bezier vertice a vertice
+    for ncol in range(ncols):
         E0 = vert_matrix[ncol][nrow]
         E1 = vert_matrix[ncol + 1][nrow]
         a0 = tg_matrix[ncol][nrow][0]
-        a1 = tg_matrix[ncol+1][nrow][0] + np.pi
+        a1 = tg_matrix[ncol + 1][nrow][0] + np.pi
         I0, I1 = get_center_handles(E0,E1,a0,a1)
 
-        # calculo el primer punto para no perder el segundo punto del ciclo anterior
         P0 = bezier_point(t_begin, E0,I0,I1,E1)
-        b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
-
-        # bezier de acople a acople
-        I2,I3 = get_center_handles(P1,P0,b1+np.pi,b0+np.pi)
-        vpath.push(f'M{P1[0]},{P1[1]} C{I2[0]} {I2[1]}, {I3[0]} {I3[1]}, {P0[0]} {P0[1]}')
-
-        # calculo segundo punto para ubicar acople
         P1 = bezier_point(t_end, E0,I0,I1,E1)
+        b0 = bezier_tangent(t_begin,E0,I0,I1,E1)
         b1 = bezier_tangent(t_end,E0,I0,I1,E1) + np.pi
 
-        vpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
+        E0_1,I0_1,I1_1,E1_1 = split_cubic_bezier(E0,I0,I1,E1,t_begin)
+        E1_2,I1_2,I0_2,E0_2 = split_cubic_bezier(E1,I1,I0,E0,1-t_end)
 
-    # bezier acople - vertice inf
-    P0 = vert_matrix[ncols][nrow]
-    I2,I3 = get_center_handles(P1,P0,a0,-np.pi/2)
-    vpath.push(f'M{P1[0]},{P1[1]} C{I2[0]} {I2[1]}, {I3[0]} {I3[1]}, {P0[0]} {P0[1]}')
-        
-    dwg.add(vpath)
+        hpath.push(
+            f'M{E0_1[0]},{E0_1[1]} C{I0_1[0]} {I0_1[1]},{I1_1[0]} {I1_1[1]},{E1_1[0]} {E1_1[1]}'
+        )
+        hpath.push(create_coupling(P0,P1,b0,b1,random.randint(0,1)))
+        hpath.push(
+            f'M{E1_2[0]},{E1_2[1]} C{I1_2[0]} {I1_2[1]},{I0_2[0]} {I0_2[1]},{E0_2[0]} {E0_2[1]}'
+        )
+    
+    dwg.add(hpath)
     
 border = dwg.path().stroke('black',width=0.5).fill('none')
 border.push(f'M0,0 H{width} V{height}')
