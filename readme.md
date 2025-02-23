@@ -29,9 +29,11 @@ Ajustar ```coupling_slope_disp_factor``` para evitar que los acoples queden muy 
 ### Todo
 - [ ] Cargar y/o almacenar los parámetros aleatorios generados para el rompecabezas actual.
 
+- [ ] Convertir el script en clase.
+
 - [x] Mejorar la generación de acoples para no producir piezas frágiles.
     
-    - Pasos aplicados:
+    - Los acoples se desplazan sobre la arista de acuerdo a la pendiente de la misma. Pasos aplicados:
         
         $t$: ubicación del centro del acople
 
