@@ -67,8 +67,8 @@ def split_cubic_bezier(P0:np.array,P1:np.array,P2:np.array,P3:np.array,t_end:flo
 
 ncols = 20
 nrows = 15
-width = 300
-height = 250
+width = 900
+height = 750
 
 err_max_h = 0.125 # como porcentaje del ancho de una celda
 err_max_v = 0.125 # como porcentaje del alto de una celda
