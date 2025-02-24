@@ -90,16 +90,17 @@ def split_cubic_bezier(P0:np.array,P1:np.array,P2:np.array,P3:np.array,t_end:flo
 
 # ==== JIGSAW PARAMETERS - can be modified ====
 
-ncols = 20
-nrows = 15
+ncols = 10
+nrows = 10
 width = 900
 height = 750
 
-err_max_h = 0.125 # como porcentaje del ancho de una celda
-err_max_v = 0.125 # como porcentaje del alto de una celda
+err_max_h = 0.2125 # como porcentaje del ancho de una celda
+err_max_v = 0.2125 # como porcentaje del alto de una celda
+alter_edge_outer_dimensions = True
 
-coupling_width = 0.28 # como porcentaje del largo de un lado
-coupling_slope_disp_factor = 0.0075 # recomiendo no tocar jeje... valores mayores a 0.01 exageran el desplazamiento
+coupling_width = 0.25 # como porcentaje del largo de un lado
+coupling_slope_disp_factor = 0.001 # recomiendo no tocar jeje... valores mayores a 0.01 exageran el desplazamiento
 
 # ==== DON'T ALTER CODE FROM HERE ON ====
 
@@ -110,8 +111,8 @@ col_width = width/ncols             # average width of the columns
 row_height = height/nrows           # average height of the rows
 
 # two lists with unique values are created to randomly shift around the vertices of the pieces
-deltas_h = np.linspace(-col_width*err_max_h, col_width*err_max_h, (ncols - 1) * (nrows - 1)).tolist()   # list containing all the possible horizontal deviations from the grid points
-deltas_v = np.linspace(-row_height*err_max_v, row_height*err_max_v, (ncols - 1) * (nrows - 1)).tolist() # list containing all the possible vertical deviation from the grid points
+deltas_h = np.linspace(-col_width*err_max_h, col_width*err_max_h, (ncols) * (nrows) - 1).tolist()   # list containing all the possible horizontal deviations from the grid points
+deltas_v = np.linspace(-row_height*err_max_v, row_height*err_max_v, (ncols) * (nrows) - 1).tolist() # list containing all the possible vertical deviation from the grid points
 random.shuffle(deltas_h)
 random.shuffle(deltas_v)
 
@@ -127,10 +128,15 @@ for ncol in range(ncols + 1):
         # ideal location over the grid intersections
         x = ncol * col_width
         y = nrow * row_height
+        # if not an edge piece, add one of the shifting values in the corresponding direction(s)
         if ncol != 0 and ncol != ncols and nrow != 0 and nrow != nrows:
-            # if not an edge piece, add one of the shifting values in the corresponding direction(s)
             x += deltas_h.pop(0)
             y += deltas_v.pop(0)
+        elif alter_edge_outer_dimensions:
+            if ncol != 0 and ncol != ncols:
+                x += deltas_h.pop(0)
+            if nrow != 0 and nrow != nrows:
+                y += deltas_v.pop(0)
         col.append(np.array([x,y]))
     vert_matrix.append(col)
 
@@ -164,7 +170,7 @@ coupling_matrix = [[random.randint(0,1) for nrow in range(nrows)] for ncol in ra
 
 # svg object instantiation
 dwg = svgwrite.Drawing(
-    filename = f"PUZZLE.svg",
+    filename = f"PUZZLE10x10_3.svg",
     size = (width, height),
     profile = "tiny"
 )
