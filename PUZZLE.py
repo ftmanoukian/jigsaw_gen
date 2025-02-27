@@ -2,6 +2,24 @@ import svgwrite
 import random
 import numpy as np
 
+# ==== JIGSAW PARAMETERS - can be modified ====
+
+filename = "PUZZLE.svg"
+
+ncols = 10
+nrows = 10
+width = 900
+height = 750
+
+err_max_h = 0.2125 # como porcentaje del ancho de una celda
+err_max_v = 0.2125 # como porcentaje del alto de una celda
+alter_edge_outer_dimensions = True
+
+coupling_width = 0.25 # como porcentaje del largo de un lado
+coupling_slope_disp_factor = 0.001 # recomiendo no tocar jeje... valores mayores a 0.01 exageran el desplazamiento
+
+# ==== DON'T ALTER CODE FROM HERE ON ====
+
 def bezier_point(t, P0 : np.array, P1 : np.array, P2 : np.array, P3 : np.array) -> np.array:
     return ((1 - t)**3 * P0 + 3 * (1 - t)**2 * t * P1 + 3 * (1 - t) * t**2 * P2 + t**3 * P3)
 
@@ -88,21 +106,6 @@ def split_cubic_bezier(P0:np.array,P1:np.array,P2:np.array,P3:np.array,t_end:flo
 
     return [P0,P0_1,P0_2,P0_3]
 
-# ==== JIGSAW PARAMETERS - can be modified ====
-
-ncols = 10
-nrows = 10
-width = 900
-height = 750
-
-err_max_h = 0.2125 # como porcentaje del ancho de una celda
-err_max_v = 0.2125 # como porcentaje del alto de una celda
-alter_edge_outer_dimensions = True
-
-coupling_width = 0.25 # como porcentaje del largo de un lado
-coupling_slope_disp_factor = 0.001 # recomiendo no tocar jeje... valores mayores a 0.01 exageran el desplazamiento
-
-# ==== DON'T ALTER CODE FROM HERE ON ====
 
 t_begin = .5 - coupling_width / 2   # constant representing the t of a bezier curve at which the couplings begin
 t_end = .5 + coupling_width / 2     # constant representing the t of a bezier curve at which the couplings end
@@ -170,7 +173,7 @@ coupling_matrix = [[random.randint(0,1) for nrow in range(nrows)] for ncol in ra
 
 # svg object instantiation
 dwg = svgwrite.Drawing(
-    filename = f"PUZZLE10x10_3.svg",
+    filename = filename,
     size = (width, height),
     profile = "tiny"
 )

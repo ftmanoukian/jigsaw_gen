@@ -1,5 +1,14 @@
 # Generador de rompecabezas
 
+## Cómo utilizarlo
+
+1. Instalar las dependencias:
+    
+       pip install numpy svgwrite
+
+2. En el archivo ```PUZZLE.py```, configurar los [parámetros](#parámetros) (líneas 5-21).
+3. Correr ```PUZZLE.py``` y revisar ```PUZZLE.svg```, verificando que no haya acoples y/o bordes superpuestos.
+
 ## Versión actual
 
 El script ```PUZZLE.py``` genera un archivo ```PUZZLE.svg``` con líneas de corte.
@@ -8,13 +17,17 @@ Los parámetros de momento se ajustan dentro del script, por lo que hay que ajus
 
 ![Ejemplo](readme/example.svg)
 
-### Parámetros
+## Parámetros
 
+* ```filename```: nombre de archivo a exportar (debe tener la extensión ```.svg```).
 * ```ncols```: cantidad de columnas.
 * ```nrows```: cantidad de filas.
 * ```width```: ancho (sin unidad).
 * ```height```: alto (sin unidad).
-* ```err_max_h```,```err_max_v```: máximo desplazamiento de los vértices desde su posición original, tanto vertical como horizontal.
+* ```err_max_h```,```err_max_v```: máximo desplazamiento de los vértices desde su posición original, tanto vertical como horizontal (como fracción del ancho de columna o alto de fila).
+* ```alter_edge_outer_dimensions```:
+  * ```False```: La arista externa de las piezas exteriores respeta la dimensión de la grilla (```col_width``` o ```row_height```).
+  * ```True```: La arista externa de las piezas exteriores tiene una dimensión aleatoria, al igual que en el resto de las piezas.
 * ```coupling_width```: ancho del acople relativo al ancho de las aristas.
 * ```coupling_slope_disp_factor```: factor de desplazamiento del acople según la pendiente de la arista.
 
